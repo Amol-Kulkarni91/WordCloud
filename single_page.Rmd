@@ -1,0 +1,238 @@
+---
+title: "State of the Union"
+output: 
+  flexdashboard::flex_dashboard:
+    social: menu
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+```{r global, include = FALSE}
+library(wordcloud)
+library(tm)
+library(dplyr)
+library(RColorBrewer)
+library(ggplot2)
+
+
+dt <- readr::read_csv("sotu_1.csv", col_types = "cc")
+
+choice <- dt$President
+
+custom_stopwords <- c("get", "can", "still", "bit", "now", "come", "later", "got",                                                          "tell", "said","just", "else", "will")
+
+```
+
+Word Cloud
+===================================== 
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+sliderInput(inputId = "num1", label = "Minimum frequency of  words", value = 20, min = 0, max = 30)
+sliderInput(inputId = "num2", label = "Maximum number of words", value = 100, min = 30, max = 400)
+selectInput(inputId = "pres", label = "President", choices = choice, selected = NULL, multiple = FALSE)
+ty <-reactive({ k <- as.character(input$pres)
+                sotu <- subset(dt, dt$President %in% k)
+                con <- Corpus(VectorSource(sotu$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm <- TermDocumentMatrix(con) %>%
+                       as.matrix()
+
+                desc <- sort(rowSums(tdm), decreasing = TRUE)
+                dat <- data.frame(word = names(desc), freq = desc)
+                
+                return(dat)
+                })
+
+bar <- reactive({k1 <- as.character(input$pres)
+                sotu1 <- subset(dt, dt$President %in% k1)
+                custom_stopwords1 <- c("get", "can", "still", "bit", "now", "come", "later", "got",                                                          "tell", "said","just", "else", "will")
+                con1 <- Corpus(VectorSource(sotu1$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm1 <- TermDocumentMatrix(con1) %>%
+                       as.matrix()
+
+                desc1 <- sort(rowSums(tdm1), decreasing = TRUE)
+                dat1 <- data.frame(word = names(desc1), freq = desc1)
+                dat1 <- dat1[1:20,]
+                
+                return(dat1)
+  
+})
+
+```
+
+Column {data-width=850}
+-------------------------------------
+
+### Word Cloud
+    
+```{r}
+renderPlot({p = par(mai=c(0,0,0,0))
+wordcloud(words = ty()$word, freq = ty()$freq, min.freq = input$num1, max.words = input$num2, random.order = FALSE, rot.per = 0.2, colors=brewer.pal(8, "Dark2"))
+par(p)
+})
+```
+
+Column {data-height=500}
+-------------------------------------
+
+### 20 Most frequently used words
+
+```{r}
+renderPlot({ggplot(bar(), aes(x = reorder(bar()$word, -bar()$freq), y = bar()$freq)) + geom_bar(stat = "identity", fill="darkred") + theme(axis.text.x=element_text(angle=45, hjust=1)) + xlab("Words") + ylab("Count of Words")})
+```
+   
+Comparison Cloud
+=====================================     
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+sliderInput(inputId = "num3", label = "Minimum frequency of  words", value = 20, min = 0, max = 30)
+sliderInput(inputId = "num4", label = "Maximum number of words", value = 100, min = 30, max = 400)
+selectInput(inputId = "pres1", label = "President 1", choices = choice, selected = "Barack Obama , February 24, 2009", multiple = FALSE)
+selectInput(inputId = "pres2", label = "President 2", choices = choice, selected = "Donald J. Trump, February 28, 2017", multiple = FALSE)
+ty_1 <-reactive({ j <- c(input$pres1, input$pres2)
+                sotu_1 <- subset(dt, dt$President %in% j)
+                con_1 <- Corpus(VectorSource(sotu_1$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm_1 <- TermDocumentMatrix(con_1) %>%
+                       as.matrix()
+                dts <- strsplit(as.character(sotu_1$President), ",")
+                ds <- matrix(unlist(dts), ncol = 3, byrow = TRUE) %>% as.data.frame()
+                ds <- as.data.frame(ds)
+                colnames(tdm_1) <- ds$V1
+                
+                return(tdm_1)
+                })
+bar_1 <- reactive({j1 <- as.character(input$pres1)
+                sotu_11 <- subset(dt, dt$President %in% j1)
+                con_11 <- Corpus(VectorSource(sotu_11$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm_11 <- TermDocumentMatrix(con_11) %>%
+                       as.matrix()
+                
+                desc2 <- sort(rowSums(tdm_11), decreasing = TRUE)
+                dat2 <- data.frame(word = names(desc2), freq = desc2)
+                dat2 <- dat2[1:20,]
+                return(dat2)
+                })
+
+bar_2 <- reactive({j2 <- as.character(input$pres2)
+                sotu_12 <- subset(dt, dt$President %in% j2)
+                con_12 <- Corpus(VectorSource(sotu_12$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm_12 <- TermDocumentMatrix(con_12) %>%
+                       as.matrix() 
+                
+                desc3 <- sort(rowSums(tdm_12), decreasing = TRUE)
+                dat3 <- data.frame(word = names(desc3), freq = desc3)
+                dat3 <- dat3[1:20,]
+                return(dat3)
+                })
+```
+
+Column {data-width=850}
+-------------------------------------
+
+### Comparison Cloud
+    
+```{r}
+renderPlot({p1 = par(mai=c(0,0,0,0))
+            comparison.cloud(ty_1(), random.order = FALSE, colors = c("lightsteelblue3","indianred3"), title.size =              2.5, min.freq = input$num3 ,max.words = input$num4)
+            par(p1)
+            })
+
+```
+
+Column {data-width=500}
+-------------------------------------
+
+### Chart 2
+
+```{r}
+renderPlot({ggplot(bar_1(), aes(x = reorder(bar_1()$word, -bar_1()$freq), y = bar_1()$freq)) + geom_bar(stat = "identity", fill="lightblue") + theme(axis.text.x=element_text(angle=45, hjust=1)) + xlab("Words") + ylab("Count of Words")})
+```
+
+### Chart 3
+    
+```{r}
+renderPlot({ggplot(bar_2(), aes(x = reorder(bar_2()$word, -bar_2()$freq), y = bar_2()$freq)) + geom_bar(stat = "identity", fill="darkred") + theme(axis.text.x=element_text(angle=45, hjust=1)) + xlab("Words") + ylab("Count of Words")})
+```
+
+
+Commonality Cloud
+=====================================     
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+sliderInput(inputId = "num5", label = "Maximum number of words", value = 100, min = 30, max = 400)
+selectInput(inputId = "pres3", label = "President 1", choices = choice, selected = NULL, multiple = FALSE)
+selectInput(inputId = "pres4", label = "President 2", choices = choice, selected = NULL, multiple = FALSE)
+ty_2 <-reactive({ h <- c(input$pres3, input$pres4)
+                sotu_2 <- subset(dt, dt$President %in% h)
+                con_2 <- Corpus(VectorSource(sotu_2$Speechtext)) %>%
+                        tm_map(content_transformer(tolower)) %>%  # Make all text lower case
+                        tm_map(removeNumbers) %>% # Remove numbers
+                        tm_map(removeWords, stopwords("english")) %>%  # Remove english common stopwords
+                        tm_map(removePunctuation) %>%  # Remove punctuations
+                        tm_map(stripWhitespace) %>% # Eliminate extra white spaces
+                        tm_map(removeWords, custom_stopwords)
+
+                tdm_2 <- TermDocumentMatrix(con_2) %>%
+                       as.matrix()
+                
+                return(tdm_2)
+                })
+```
+
+Column {data-width=850}
+-------------------------------------
+
+### Commonality Cloud
+    
+```{r}
+renderPlot({p2 = par(mai=c(0,0,0,0))
+  commonality.cloud(ty_2(), random.order=FALSE, scale=c(5, .5),colors = brewer.pal(4, "Dark2"), max.words=input$num5)
+  par(p2)
+})
+```
